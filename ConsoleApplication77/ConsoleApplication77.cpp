@@ -3,17 +3,19 @@
 #include <map>
 #include <ctime>
 #include <Windows.h>
+#include <vector>
 
 using namespace std;
 
 struct DataInfo {
     string address;
-    string FIO;
-    DataInfo(
-        string FIO,
-        string address) :
-        FIO(FIO),
-        address(address) {};
+    vector<string>* FIO = new vector<string>();
+    DataInfo(string F, string I, string O, string address) :
+        address(address) {
+        FIO->push_back(F);
+        FIO->push_back(I);
+        FIO->push_back(O);
+    };
 };
 
 class DataEntry {
@@ -26,12 +28,12 @@ public:
 
     // создание пустой записи (empty = true)
     DataEntry() {
-        info = new DataInfo("","");
+        info = new DataInfo("", "", "", "");
     }
 
     // создание записи, инициализированной значениями (empty = false)
-    DataEntry(string phone, string FIO, string address) {
-        info = new DataInfo(FIO, address);
+    DataEntry(string phone, string F, string I, string O, string address) {
+        info = new DataInfo(F, I, O, address);
         this->phone = phone;
         empty = false;
     }
@@ -40,7 +42,7 @@ public:
         return phone;
     }
 
-    string getFIO() {
+    vector<string>* getFIO() {
         return info->FIO;
     }
 
@@ -74,9 +76,9 @@ private:
     }
 
     // второй хэш (для двойного хэширования): 3 - (k mod 3)
-    int hashTwo(string& input) {
+    /*int hashTwo(string& input) {
         return 3 - (symbolSum(input) % 3);
-    }
+    }*/
 
     // метод для увеличения массива вдвое и пересчёта хэшей уже добавленных записей
     void recalculateHashes() {
@@ -105,13 +107,31 @@ public:
         return dataArray[hashTable[phone]];
     }
 
+    int gcd(int x, int y) // взаимно простые числа (== 1 -> да, иначе -> нет)
+    {
+        return y ? gcd(y, x % y) : x;
+    }
+
     void addEntry(DataEntry& entry) {
         string key = entry.getPhone();
-        int hash1 = hashOne(key), hash2 = hashTwo(key), hash; // рассчёт двух хэшей
+        //int hash1 = hashOne(key), hash2 = hashTwo(key); // рассчёт двух хэшей
+        int hash; 
+        int c = 3; // константа для хеширования
+        int d = 7; // константа для хеширования
         int i = 0; // количество шагов смещения при открытой адресации
 
+        for (int i = 0; i < count; i++) // пересчет констант (c и d) для корректного хеширования (делаем их взаимно простыми с максимальным количеством записей)
+            for (int j = 0; j < count; j++)
+                if (gcd(count,gcd(i,j)) == 1)
+                {
+                    c = i;
+                    d = j;
+                    break;
+                }
+
         while (true) {
-            hash = (hash1 + i * hash2) % count; // рассчёт хэша с учётом двойного хэширования
+            //hash = (hash1 + i * hash2) % count; // рассчёт хэша с учётом двойного хэширования
+            hash = (hashOne(key) + c * i + d * i * i) % count;
 
             if (dataArray[hash].isEmpty()) { // добавление элемента в ячейку, если она не занята
                 hashTable[key] = hash;
@@ -137,9 +157,14 @@ public:
 
     // вывод всех текущих записей в массиве
     void printData() {
-        cout << "Номер счета:\t\tФИО:\t\t\tАдрес:\n";
+        cout << "Номер счета:\t\tФИО:\t\t\t\t\tАдрес:\n";
         for (pair<string, int> keyValuePair : hashTable) {
-            cout << keyValuePair.first << "\t\t\t" << dataArray[keyValuePair.second].getFIO() << "\t\t\t" << dataArray[keyValuePair.second].getAddress() << endl;
+            cout << keyValuePair.first << "\t\t\t" 
+                << dataArray[keyValuePair.second].getFIO()->at(0) << " "
+                << dataArray[keyValuePair.second].getFIO()->at(1) << " "
+                << dataArray[keyValuePair.second].getFIO()->at(2) << " "
+                << "\t\t" 
+                << dataArray[keyValuePair.second].getAddress() << endl;
         }
     }
 
@@ -148,15 +173,19 @@ public:
 // заполнение массива случайными записями
 void addRandom(DataManager& manager, int count) {
     string cities[5]{ "Москва", "Питербург", "Ижевск", "Якутск", "Краснодар" };
-    string FIOs[5]{ "Кузнецов", "Васильев", "Галиханова", "Маровая", "Селецкая" };
+    string Fs[5]{ "Кузнецов", "Васильев", "Галиханова", "Маров", "Алекперова" };
+    string Is[5]{ "Андрей", "Виктор", "Эмилия", "Герман", "Алла" };
+    string Os[5]{ "Александрович", "Владимирович", "Ринатовна", "Андреев", "Рауфовна" };
     for (int i = 0; i < count; i++) {
         string address = cities[rand() % 5];
-        string FIO = FIOs[rand() % 5];
+        string F = Fs[rand() % 5];
+        string I = Is[rand() % 5];
+        string O = Os[rand() % 5];
         string phone;
         for (int j = 0; j < 7; j++) {
             phone += (char)(rand() % 7 + 48);
         }
-        DataEntry entry(phone, FIO, address); //FIO//FIO//FIO//////////////////////////////////FIO
+        DataEntry entry(phone, F, I, O, address); //FIO//FIO//FIO//////////////////////////////////FIO
         manager.addEntry(entry);
     }
 }
@@ -193,12 +222,18 @@ int main()
                 cout << "Введите счет в банке (7 символов): ";
                 cin >> phone;
                 phone = phone.substr(0, 7);
-                string FIO;
-                cout << "Введите ФИО: ";
-                cin >> FIO;
+                string F;
+                cout << "Введите Фамилию: ";
+                cin >> F;
+                string I;
+                cout << "Введите Имя: ";
+                cin >> I;
+                string O;
+                cout << "Введите Отчество: ";
+                cin >> O;
                 cout << "Введите адрес: ";
                 cin >> address;
-                DataEntry entry(phone, FIO, address);
+                DataEntry entry(phone, F, I, O, address);
                 manager.addEntry(entry);
                 cout << "Запись добавлена." << endl;
                 break;
@@ -208,7 +243,7 @@ int main()
                 cin >> phone;
                 phone = phone.substr(0, 7);
                 DataEntry entry = manager.get(phone);
-                cout << entry.getFIO() << '\t' << entry.getAddress() << endl;
+                cout << entry.getFIO()->at(0) << " " << entry.getFIO()->at(1) << " " << entry.getFIO()->at(2) << '\t' << entry.getAddress() << endl;
                 break;
             }
             case 4: {
