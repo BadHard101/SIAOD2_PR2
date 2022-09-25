@@ -7,10 +7,11 @@
 
 using namespace std;
 
-struct DataInfo {
-    string address;
-    vector<string>* FIO = new vector<string>();
-    DataInfo(string F, string I, string O, string address) :
+// structure of storing information about users (full name and address of the user)
+struct DataPerson {
+    string address; 
+    vector<string>* FIO = new vector<string>(); // the vector of storing the Surname, First name and Patronymic
+    DataPerson(string F, string I, string O, string address) :
         address(address) {
         FIO->push_back(F);
         FIO->push_back(I);
@@ -18,28 +19,27 @@ struct DataInfo {
     };
 };
 
-class DataEntry {
+class DataInfo {
 private:
-    string phone; // номер телефона, используется как ключ
-    //string address; // полезные данные
-    DataInfo* info;
-    bool empty = true; // индикатор того, занята ли ячейка
+    string check; // bank account number (key)
+    DataPerson* info;
+    bool empty = true; // cell occupancy indicator
 public:
 
-    // создание пустой записи (empty = true)
-    DataEntry() {
-        info = new DataInfo("", "", "", "");
+    // creating an empty record (empty = true)
+    DataInfo() {
+        info = new DataPerson("", "", "", "");
     }
 
-    // создание записи, инициализированной значениями (empty = false)
-    DataEntry(string phone, string F, string I, string O, string address) {
-        info = new DataInfo(F, I, O, address);
-        this->phone = phone;
+    // creating a record initialized with values (empty = false)
+    DataInfo(string check, string F, string I, string O, string address) {
+        info = new DataPerson(F, I, O, address);
+        this->check = check;
         empty = false;
     }
 
-    string getPhone() {
-        return phone;
+    string getCheck() {
+        return check;
     }
 
     vector<string>* getFIO() {
@@ -57,70 +57,63 @@ public:
 
 class DataManager {
 private:
-    map<string, int> hashTable; // хэш-таблица "ключ-значение"
-    DataEntry* dataArray; // массив записей
-    int count; // текущее количество записей
+    map<string, int> hashTable; // hash table value-key
+    DataInfo* dataArray; // array of user information records
+    int count; // current number of records
 
-    // сумма ascii-кодов символов строки для последующего вычисления хэша
-    int symbolSum(string& str) {
+    // Hash enumeration function
+    int hashFun(string& str) {
         int result = 0;
+        // the sum of the ascii-codes of the string characters for the subsequent hash calculation
         for (int i = 0; i < 7; i++) {
             result += str[i];
         }
-        return result;
+        return result % count;
     }
 
-    // первый хэш: k mod N
-    int hashOne(string& input) {
-        return symbolSum(input) % count;
-    }
-
-    // второй хэш (для двойного хэширования): 3 - (k mod 3)
-    /*int hashTwo(string& input) {
-        return 3 - (symbolSum(input) % 3);
-    }*/
-
-    // метод для увеличения массива вдвое и пересчёта хэшей уже добавленных записей
+    // A method for doubling the array and recalculating the hashes of already added records
     void recalculateHashes() {
-        cout << "Происходит расширение массива и пересчёт хэшей." << endl;
-        count *= 2; // увеличение размера массива
-        DataEntry empty, temp;
-        DataEntry* arrayExpanded = new DataEntry[count]; // создание нового пустого массива, вдвое большего предыдущего размера
-        DataEntry* copy = dataArray; // резервная копия старого массива для сохранения доступа к элементам в процессе пересчёта хэшей
-        dataArray = arrayExpanded; // замена текущего массива на пустой вдвое больший
+        cout << "Recalculation of hashes and array expansion" << endl;
+        count *= 2; // Doubling the size of the array
+        DataInfo temp;
+        DataInfo* arrayExpanded = new DataInfo[count]; // Creating a new empty array twice the previous size
+        DataInfo* copy = dataArray;
+        dataArray = arrayExpanded;
 
-        // цикл, проходящий по всем парам "ключ-значение" в хэш-таблице
+        // a loop passing through all key-value pairs in a hash table
         for (pair<string, int> keyValuePair : hashTable) {
-            temp = copy[keyValuePair.second]; // сохранение записи из старого массива для повторного добавления в новый
-            addEntry(temp); // добавление записи в новый пустой массив (включает в себя рассчёт хэша)
+            temp = copy[keyValuePair.second]; // saving an entry from the old array for re-adding to the new one
+            addEntry(temp); // adding an entry to a new empty array (includes hash calculation)
         }
-        cout << "Пересчёт хэшей закончен." << endl;
+        cout << "Recalculation of hashes is finished." << endl;
     }
 
 public:
     DataManager(int count) {
         this->count = count;
-        dataArray = new DataEntry[count];
+        dataArray = new DataInfo[count];
     }
 
-    DataEntry get(string& phone) {
-        return dataArray[hashTable[phone]];
+    DataInfo get(string& check) {
+        return dataArray[hashTable[check]];
     }
 
-    int gcd(int x, int y) // взаимно простые числа (== 1 -> да, иначе -> нет)
+    int gcd(int x, int y) // mutually prime numbers (== 1 -> yes, else -> no)
     {
         return y ? gcd(y, x % y) : x;
     }
 
-    void addEntry(DataEntry& entry) {
-        string key = entry.getPhone();
+    void addEntry(DataInfo& entry) {
+        string key = entry.getCheck();
         //int hash1 = hashOne(key), hash2 = hashTwo(key); // рассчёт двух хэшей
         int hash; 
-        int c = 3; // константа для хеширования
-        int d = 7; // константа для хеширования
-        int i = 0; // количество шагов смещения при открытой адресации
+        int c = 3; // the first constant for hashing
+        int d = 7; // the second constant for hashing
+        int i = 0; // number of offset steps with open addressing
 
-        for (int i = 0; i < count; i++) // пересчет констант (c и d) для корректного хеширования (делаем их взаимно простыми с максимальным количеством записей)
+        // recalculation of constants (c and d) for correct hashing 
+        // (making them mutually simple with the maximum number of records)
+        for (int i = 0; i < count; i++) 
             for (int j = 0; j < count; j++)
                 if (gcd(count,gcd(i,j)) == 1)
                 {
@@ -130,34 +123,38 @@ public:
                 }
 
         while (true) {
-            //hash = (hash1 + i * hash2) % count; // рассчёт хэша с учётом двойного хэширования
-            hash = (hashOne(key) + c * i + d * i * i) % count;
+            // consider the hash using quadratic probing
+            // (according to the assignment of option #22)
+            hash = (hashFun(key) + c * i + d * i * i) % count;
 
-            if (dataArray[hash].isEmpty()) { // добавление элемента в ячейку, если она не занята
+            // adding an element to a cell if it is not occupied
+            if (dataArray[hash].isEmpty()) {
                 hashTable[key] = hash;
                 dataArray[hash] = entry;
                 break;
             }
 
-            cout << "Произошла коллизия: " << key << " и " << dataArray[hash].getPhone() << " имеют одинаковый хэш." << endl;
+            cout << "A collision has occurred: " << key << " and " 
+                << dataArray[hash].getCheck() << " have the same hash." << endl;
             i++;
         }
 
-        if ((float)hashTable.size() / (float)count >= 0.75) { // переход к пересчёту хэшей, если коэф. заполнения массива >= 0.75
+        // switch to recalculation of hashes if the coefficient of array filling >= 0.75
+        if ((float)hashTable.size() / (float)count >= 0.75) { 
             recalculateHashes();
         }
     }
 
-    // удаление записи по ключу
-    void removeEntry(string& phone) {
-        DataEntry empty;
-        dataArray[hashTable[phone]] = empty;
-        hashTable.erase(phone);
+    // deleting an entry by key
+    void removeEntry(string& check) {
+        DataInfo empty;
+        dataArray[hashTable[check]] = empty;
+        hashTable.erase(check);
     }
 
-    // вывод всех текущих записей в массиве
+    // output of all current records in the array
     void printData() {
-        cout << "Номер счета:\t\tФИО:\t\t\t\t\tАдрес:\n";
+        cout << "Account number:\t\tFCs:\t\t\t\t\tAddress:\n";
         for (pair<string, int> keyValuePair : hashTable) {
             cout << keyValuePair.first << "\t\t\t" 
                 << dataArray[keyValuePair.second].getFIO()->at(0) << " "
@@ -170,22 +167,22 @@ public:
 
 };
 
-// заполнение массива случайными записями
+// filling an array with random entries
 void addRandom(DataManager& manager, int count) {
-    string cities[5]{ "Москва", "Питербург", "Ижевск", "Якутск", "Краснодар" };
-    string Fs[5]{ "Кузнецов", "Васильев", "Галиханова", "Маров", "Алекперова" };
-    string Is[5]{ "Андрей", "Виктор", "Эмилия", "Герман", "Алла" };
-    string Os[5]{ "Александрович", "Владимирович", "Ринатовна", "Андреев", "Рауфовна" };
+    string cities[5]{ "Moscow", "Piter", "Izhevsk", "Yakutsk", "Krasnodar" };
+    string Fs[5]{ "Kuznetsov", "Vasiliev", "Galikhanov", "Marov", "Alekperov" };
+    string Is[5]{ "Andrey", "Victor", "Emil", "Herman", "Allan" };
+    string Os[5]{ "Aleksandrovich", "Vladimirovich", "Rinatov", "Andreev", "Raufov" };
     for (int i = 0; i < count; i++) {
         string address = cities[rand() % 5];
         string F = Fs[rand() % 5];
         string I = Is[rand() % 5];
         string O = Os[rand() % 5];
-        string phone;
+        string check;
         for (int j = 0; j < 7; j++) {
-            phone += (char)(rand() % 7 + 48);
+            check += (char)(rand() % 7 + 48);
         }
-        DataEntry entry(phone, F, I, O, address); //FIO//FIO//FIO//////////////////////////////////FIO
+        DataInfo entry(check, F, I, O, address);
         manager.addEntry(entry);
     }
 }
@@ -196,62 +193,67 @@ int main()
     SetConsoleCP(1251);
 
     srand(time(NULL));
-    DataManager manager(10);/////////////////
-    addRandom(manager, 6);/////////////////
+    DataManager manager(10);
+    addRandom(manager, 6);
 
-    cout << "Список доступных команд:" << endl << endl
-        << "1. Вывод текущего состояния массива" << endl
-        << "2. Добавление записи в массив" << endl
-        << "3. Получение записи из массива по ключу" << endl
-        << "4. Удаление записи по ключу." << endl
-        << "5. Завершить работу." << endl;
+    
 
     while (true) {
-        cout << "Введите номер выбранной операции: ";
+        cout << "\nList of available commands:" << endl << endl
+            << "1. Output of the current state of the array" << endl
+            << "2. Adding an entry to an array" << endl
+            << "3. Getting an entry from an array by key" << endl
+            << "4. Deleting an entry by key." << endl
+            << "5. Finish the program." << endl
+            << "Enter the number of the selected operation: ";
         int option;
         cin >> option;
-        string phone;
+        string check;
 
         switch (option) {
             case 1: {
+                cout << endl;
                 manager.printData();
                 break;
             }
             case 2: {
                 string address;
-                cout << "Введите счет в банке (7 символов): ";
-                cin >> phone;
-                phone = phone.substr(0, 7);
+                cout << "Enter a bank account (7 characters): ";
+                cin >> check;
+                check = check.substr(0, 7);
                 string F;
-                cout << "Введите Фамилию: ";
+                cout << "Enter Last Name: ";
                 cin >> F;
                 string I;
-                cout << "Введите Имя: ";
+                cout << "Enter First Name: ";
                 cin >> I;
                 string O;
-                cout << "Введите Отчество: ";
+                cout << "Enter Patronymic: ";
                 cin >> O;
-                cout << "Введите адрес: ";
+                cout << "Enter the address: ";
                 cin >> address;
-                DataEntry entry(phone, F, I, O, address);
+                DataInfo entry(check, F, I, O, address);
                 manager.addEntry(entry);
-                cout << "Запись добавлена." << endl;
+                cout << "Entry added." << endl;
                 break;
             }
             case 3: {
-                cout << "Введите номер телефона нужной записи: ";
-                cin >> phone;
-                phone = phone.substr(0, 7);
-                DataEntry entry = manager.get(phone);
-                cout << entry.getFIO()->at(0) << " " << entry.getFIO()->at(1) << " " << entry.getFIO()->at(2) << '\t' << entry.getAddress() << endl;
+                cout << "Enter the phone number of the desired entry: ";
+                cin >> check;
+                check = check.substr(0, 7);
+                DataInfo entry = manager.get(check);
+                cout << entry.getFIO()->at(0) << " " 
+                    << entry.getFIO()->at(1) << " " 
+                    << entry.getFIO()->at(2) << '\t' 
+                    << entry.getAddress() << endl;
                 break;
             }
             case 4: {
-                cout << "Введите номер телефона удаляемой записи: ";
-                cin >> phone;
-                phone = phone.substr(0, 7);
-                manager.removeEntry(phone);
-                cout << "Запись удалена." << endl;
+                cout << "Enter the phone number of the deleted entry: ";
+                cin >> check;
+                check = check.substr(0, 7);
+                manager.removeEntry(check);
+                cout << "Entry complitly deleted." << endl;
                 break;
             }
             case 5: {
